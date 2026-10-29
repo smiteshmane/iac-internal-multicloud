@@ -1,0 +1,17 @@
+locals {
+  name_prefix = var.name_prefix != "" ? var.name_prefix : "${var.project}-${var.environment}-${var.name}"
+
+  default_tags = {
+    Environment = var.environment
+    Project     = var.project
+    ManagedBy   = "Terraform"
+    Module      = "aws-secrets-manager"
+  }
+
+  merged_tags = merge(local.default_tags, var.common_tags, var.tags)
+
+  # Compute payload string
+  secret_payload = var.secret_string != null ? var.secret_string : (
+    var.secret_key_value != null ? jsonencode(var.secret_key_value) : null
+  )
+}
