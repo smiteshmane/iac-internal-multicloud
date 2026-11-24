@@ -55,15 +55,6 @@ managed_instances = {
     administrator_login = "sqladmin"
     connection_type     = "Redirect"
   }
-  "secondary" = {
-    name                = ""
-    sku_name            = "GP_Gen5"
-    vcores              = 4
-    storage_size_in_gb  = 32
-    license_type        = "LicenseIncluded"
-    administrator_login = "sqladmin"
-    connection_type     = "Redirect"
-  }
 }
 
 # Storage Accounts (managed with for_each)

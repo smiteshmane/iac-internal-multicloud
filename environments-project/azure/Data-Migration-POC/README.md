@@ -14,11 +14,10 @@ This environment provisions the complete testing infrastructure for an automated
                       |  | Subnet: 10.0.2.0/28 |   | Subnet: 10.0.1.0/26         |  |
                       |  | (Source SQL VM)     |   | (Delegated to MI - 64 IPs)  |  |
                       |  |                     |   |                             |  |
-                      |  | [SQL Server 2022    |   | [Azure SQL MI #1 (Primary)] |  |
+                      |  | [SQL Server 2022    |   | [Azure SQL MI (Primary)]    |  |
                       |  |   Developer VM]     |   | (GP_Gen5, 4 vCore, 32GB)    |  |
                       |  |   (Standard_B2s,    |   |                             |  |
-                      |  |    32GB OS Disk)    |   | [Azure SQL MI #2 (Secondary)|  |
-                      |  |                     |   | (GP_Gen5, 4 vCore, 32GB)    |  |
+                      |  |    32GB OS Disk)    |   |                             |  |
                       |  +----------+----------+   +--------------+--------------+  |
                       +-------------|-----------------------------|-----------------+
                                     |                             |

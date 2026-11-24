@@ -50,7 +50,7 @@ jobs:
       ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      ARM_ACCESS_KEY: ${{ secrets.AZURE_STORAGE_ACCESS_KEY }}
+      ARM_USE_AZUREAD: "true"
       TF_VAR_default_mi_administrator_login_password: ${{ secrets.TF_VAR_default_mi_administrator_login_password }}
       TF_VAR_default_vm_admin_password: ${{ secrets.TF_VAR_default_vm_admin_password }}
 
@@ -80,7 +80,13 @@ jobs:
       # Remote backend init when credentials exist
       - name: Terraform Init (Remote Azure Backend)
         if: steps.azure-auth-check.outputs.has_creds == 'true'
-        run: terraform init
+        env:
+          AZ_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_ACCESS_KEY }}
+        run: |
+          if [ -n "$AZ_STORAGE_KEY" ]; then
+            export ARM_ACCESS_KEY="$AZ_STORAGE_KEY"
+          fi
+          terraform init
 
       # Local backend validation when credentials are not configured
       - name: Terraform Init (Validation Mode)
@@ -99,7 +105,12 @@ jobs:
 
       - name: Terraform Plan
         if: steps.azure-auth-check.outputs.has_creds == 'true'
+        env:
+          AZ_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_ACCESS_KEY }}
         run: |
+          if [ -n "$AZ_STORAGE_KEY" ]; then
+            export ARM_ACCESS_KEY="$AZ_STORAGE_KEY"
+          fi
           terraform plan -no-color -input=false -out=tfplan > plan.txt 2>&1 || true
           cat plan.txt
 
