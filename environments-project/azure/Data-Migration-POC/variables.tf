@@ -297,12 +297,6 @@ variable "managed_instances" {
       storage_size_in_gb = 32
       license_type       = "LicenseIncluded"
     }
-    "secondary" = {
-      sku_name           = "GP_Gen5"
-      vcores             = 4
-      storage_size_in_gb = 32
-      license_type       = "LicenseIncluded"
-    }
   }
 }
 
@@ -344,7 +338,7 @@ variable "virtual_machines" {
   type = map(object({
     name            = string
     subnet_key      = optional(string, "source_vm")
-    vm_size         = optional(string, "Standard_B2s")
+    vm_size         = optional(string, "Standard_B1s")
     os_disk_size_gb = optional(number, 32)
     admin_username  = optional(string, "azureuser")
     admin_password  = optional(string)
@@ -356,7 +350,7 @@ variable "virtual_machines" {
     "source_sql" = {
       name            = "vm-sqlsource"
       subnet_key      = "source_vm"
-      vm_size         = "Standard_B2s"
+      vm_size         = "Standard_B1s"
       os_disk_size_gb = 32
       admin_username  = "azureuser"
       image_publisher = "MicrosoftSQLServer"

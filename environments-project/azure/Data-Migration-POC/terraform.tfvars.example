@@ -44,17 +44,17 @@ subnets = {
   }
 }
 
-# Destination: Azure SQL Managed Instances (managed with for_each on same VNet and Subnet)
+# Destination: Azure SQL Managed Instances (empty by default to avoid baseline costs; uncomment to spin up on-demand)
 managed_instances = {
-  "primary" = {
-    name                = ""
-    sku_name            = "GP_Gen5"
-    vcores              = 4
-    storage_size_in_gb  = 32
-    license_type        = "LicenseIncluded"
-    administrator_login = "sqladmin"
-    connection_type     = "Redirect"
-  }
+  # "primary" = {
+  #   name                = ""
+  #   sku_name            = "GP_Gen5"
+  #   vcores              = 4
+  #   storage_size_in_gb  = 32
+  #   license_type        = "LicenseIncluded"
+  #   administrator_login = "sqladmin"
+  #   connection_type     = "Redirect"
+  # }
 }
 
 # Storage Accounts (managed with for_each)
@@ -72,7 +72,7 @@ virtual_machines = {
   "source_sql" = {
     name            = "vm-sqlsource"
     subnet_key      = "source_vm"
-    vm_size         = "Standard_B2s"
+    vm_size         = "Standard_B1s"
     os_disk_size_gb = 32
     admin_username  = "azureuser"
     image_publisher = "MicrosoftSQLServer"

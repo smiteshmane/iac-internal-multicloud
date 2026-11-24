@@ -16,6 +16,10 @@ on:
         type: string
         default: "1.9.5"
         description: "Terraform CLI version"
+      azure_tfvars:
+        required: false
+        type: string
+        description: "Content of terraform.tfvars injected from GitHub Variables"
     secrets:
       AZURE_CLIENT_ID:
         required: false
@@ -26,6 +30,8 @@ on:
       AZURE_TENANT_ID:
         required: false
       AZURE_STORAGE_ACCESS_KEY:
+        required: false
+      AZURE_TFVARS:
         required: false
       TF_VAR_default_mi_administrator_login_password:
         required: false
@@ -92,6 +98,21 @@ jobs:
       - name: Terraform Init (Validation Mode)
         if: steps.azure-auth-check.outputs.has_creds != 'true'
         run: terraform init -backend=false
+
+      # Inject terraform.tfvars from GitHub Repository Variables or Secrets
+      - name: Inject terraform.tfvars from GitHub Variables
+        env:
+          INPUT_TFVARS: ${{ inputs.azure_tfvars }}
+          SECRET_TFVARS: ${{ secrets.AZURE_TFVARS }}
+        run: |
+          TFVARS_DATA="${INPUT_TFVARS:-$SECRET_TFVARS}"
+          if [ -n "$TFVARS_DATA" ]; then
+            echo "$TFVARS_DATA" > terraform.tfvars
+            echo "Successfully generated terraform.tfvars from GitHub Variables."
+          elif [ ! -f "terraform.tfvars" ] && [ -f "terraform.tfvars.example" ]; then
+            echo "::warning::No terraform.tfvars found or provided in Variables. Using terraform.tfvars.example fallback."
+            cp terraform.tfvars.example terraform.tfvars
+          fi
 
       - name: Terraform Validate
         run: terraform validate

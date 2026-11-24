@@ -52,12 +52,14 @@ jobs:
       working_directory: "environments-project/azure/${{ github.event.inputs.project || 'Data-Migration-POC' }}"
       environment_name: "${{ github.event.inputs.environment || 'dev' }}"
       terraform_version: "1.9.5"
+      azure_tfvars: ${{ vars.AZURE_TFVARS || '' }}
     secrets:
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
       AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       AZURE_STORAGE_ACCESS_KEY: ${{ secrets.AZURE_STORAGE_ACCESS_KEY }}
+      AZURE_TFVARS: ${{ secrets.AZURE_TFVARS }}
       TF_VAR_default_mi_administrator_login_password: ${{ secrets.TF_VAR_default_mi_administrator_login_password }}
       TF_VAR_default_vm_admin_password: ${{ secrets.TF_VAR_default_vm_admin_password }}
 
@@ -72,11 +74,13 @@ jobs:
       working_directory: "environments-project/azure/${{ github.event.inputs.project || 'Data-Migration-POC' }}"
       environment_name: "${{ github.event.inputs.environment || 'dev' }}"
       terraform_version: "1.9.5"
+      azure_tfvars: ${{ vars.AZURE_TFVARS || '' }}
     secrets:
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
       AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       AZURE_STORAGE_ACCESS_KEY: ${{ secrets.AZURE_STORAGE_ACCESS_KEY }}
+      AZURE_TFVARS: ${{ secrets.AZURE_TFVARS }}
       TF_VAR_default_mi_administrator_login_password: ${{ secrets.TF_VAR_default_mi_administrator_login_password }}
       TF_VAR_default_vm_admin_password: ${{ secrets.TF_VAR_default_vm_admin_password }}
