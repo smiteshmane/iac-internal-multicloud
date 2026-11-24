@@ -1,0 +1,94 @@
+name: "Reusable Terraform Apply Template"
+
+on:
+  workflow_call:
+    inputs:
+      working_directory:
+        required: true
+        type: string
+        description: "Path to the Terraform environment directory"
+      environment_name:
+        required: true
+        type: string
+        description: "Target environment name (dev, staging, prod)"
+      terraform_version:
+        required: false
+        type: string
+        default: "1.5.7"
+        description: "Terraform CLI version"
+    secrets:
+      GCP_SA_KEY:
+        required: false
+      GCP_TF_STATE_BUCKET:
+        required: false
+      GCP_TFVARS:
+        required: false
+
+jobs:
+  terraform-apply:
+    name: "Apply (${{ inputs.environment_name }})"
+    runs-on: ubuntu-latest
+    
+    # Enforces manual approval gate configured in GitHub Environment settings
+    environment: ${{ inputs.environment_name }}
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+
+      - name: Check GCP Credentials
+        id: gcp-auth-check
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          if [ -n "$GCP_SA_KEY" ]; then
+            echo "has_creds=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_creds=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Authenticate to Google Cloud
+        if: steps.gcp-auth-check.outputs.has_creds == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Terraform Init (Remote GCS Backend)
+        if: steps.gcp-auth-check.outputs.has_creds == 'true'
+        env:
+          GCP_TF_STATE_BUCKET: ${{ secrets.GCP_TF_STATE_BUCKET }}
+        run: |
+          if [ -n "$GCP_TF_STATE_BUCKET" ]; then
+            terraform init -backend-config="bucket=$GCP_TF_STATE_BUCKET"
+          else
+            terraform init -backend=false
+          fi
+
+      - name: Download Plan Artifact
+        if: steps.gcp-auth-check.outputs.has_creds == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ inputs.environment_name }}
+          path: ${{ inputs.working_directory }}
+
+      - name: Inject terraform.tfvars from GitHub Secrets
+        if: steps.gcp-auth-check.outputs.has_creds == 'true'
+        env:
+          GCP_TFVARS: ${{ secrets.GCP_TFVARS }}
+        run: |
+          if [ -n "$GCP_TFVARS" ]; then
+            echo "$GCP_TFVARS" > terraform.tfvars
+          fi
+
+      - name: Terraform Apply
+        if: steps.gcp-auth-check.outputs.has_creds == 'true'
+        run: terraform apply -input=false tfplan

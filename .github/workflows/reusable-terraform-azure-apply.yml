@@ -1,0 +1,93 @@
+name: "Reusable Terraform Azure Apply Template"
+
+on:
+  workflow_call:
+    inputs:
+      working_directory:
+        required: true
+        type: string
+        description: "Path to the Azure Terraform project/environment directory"
+      environment_name:
+        required: true
+        type: string
+        description: "Target environment name (e.g. dev, staging, prod)"
+      terraform_version:
+        required: false
+        type: string
+        default: "1.9.5"
+        description: "Terraform CLI version"
+    secrets:
+      AZURE_CLIENT_ID:
+        required: false
+      AZURE_CLIENT_SECRET:
+        required: false
+      AZURE_SUBSCRIPTION_ID:
+        required: false
+      AZURE_TENANT_ID:
+        required: false
+      AZURE_STORAGE_ACCESS_KEY:
+        required: false
+      TF_VAR_default_mi_administrator_login_password:
+        required: false
+      TF_VAR_default_vm_admin_password:
+        required: false
+
+jobs:
+  terraform-apply:
+    name: "Apply (${{ inputs.environment_name }})"
+    runs-on: ubuntu-latest
+
+    # Enforces manual approval gate configured in GitHub Environment settings
+    environment: ${{ inputs.environment_name }}
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_ACCESS_KEY: ${{ secrets.AZURE_STORAGE_ACCESS_KEY }}
+      TF_VAR_default_mi_administrator_login_password: ${{ secrets.TF_VAR_default_mi_administrator_login_password }}
+      TF_VAR_default_vm_admin_password: ${{ secrets.TF_VAR_default_vm_admin_password }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+
+      - name: Check Azure Credentials
+        id: azure-auth-check
+        run: |
+          if [ -n "$ARM_CLIENT_ID" ] && [ -n "$ARM_CLIENT_SECRET" ] && [ -n "$ARM_TENANT_ID" ]; then
+            echo "has_creds=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_creds=false" >> $GITHUB_OUTPUT
+            echo "::error::Azure credentials are missing in GitHub Secrets. Cannot apply changes."
+            exit 1
+          fi
+
+      - name: Terraform Init (Remote Azure Backend)
+        run: terraform init
+
+      - name: Download Stored Plan
+        uses: actions/download-artifact@v4
+        id: download-plan
+        continue-on-error: true
+        with:
+          name: tfplan-azure-${{ inputs.environment_name }}
+          path: ${{ inputs.working_directory }}
+
+      - name: Terraform Apply (Using Existing Plan)
+        if: steps.download-plan.outcome == 'success'
+        run: terraform apply -auto-approve -input=false tfplan
+
+      - name: Terraform Apply (Direct)
+        if: steps.download-plan.outcome != 'success'
+        run: terraform apply -auto-approve -input=false

@@ -19,15 +19,15 @@ resource "azurerm_service_plan" "this" {
 }
 
 resource "azurerm_linux_function_app" "linux" {
-  count                       = var.os_type == "Linux" ? 1 : 0
-  name                        = var.function_app_name
-  location                    = var.location
-  resource_group_name         = var.resource_group_name
-  service_plan_id             = var.service_plan_id != null ? var.service_plan_id : azurerm_service_plan.this[0].id
-  storage_account_name        = var.storage_account_name
-  storage_account_access_key  = var.storage_account_access_key
-  https_only                  = true
-  virtual_network_subnet_id   = var.vnet_integration_subnet_id
+  count                      = var.os_type == "Linux" ? 1 : 0
+  name                       = var.function_app_name
+  location                   = var.location
+  resource_group_name        = var.resource_group_name
+  service_plan_id            = var.service_plan_id != null ? var.service_plan_id : azurerm_service_plan.this[0].id
+  storage_account_name       = var.storage_account_name
+  storage_account_access_key = var.storage_account_access_key
+  https_only                 = true
+  virtual_network_subnet_id  = var.vnet_integration_subnet_id
 
   site_config {
     ftps_state          = "Disabled"

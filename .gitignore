@@ -1,0 +1,98 @@
+# ==============================================================================
+# Terraform Gitignore
+# ==============================================================================
+
+# Local .terraform directories
+**/.terraform/*
+**/.terraform/
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude all .tfvars files containing potentially sensitive secrets/credentials
+# Keep *.tfvars.example files tracked for configuration templates
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# Override files (CLI-specific configurations)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI configuration files
+.terraformrc
+terraform.rc
+
+# Terraform lock file
+.terraform.lock.hcl
+
+# ==============================================================================
+# Cloud Credentials & Secrets
+# ==============================================================================
+*.pem
+*.key
+*.pub
+*.pfx
+*.cer
+*.crt
+*credentials*
+*secret*
+.env
+.env.*
+
+# Azure CLI / Cloud CLI caches
+.azure/
+.aws/
+.gcloud/
+
+# ==============================================================================
+# OS Generated Files
+# ==============================================================================
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Linux
+*~
+.directory
+
+# ==============================================================================
+# IDEs and Editors
+# ==============================================================================
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains (IntelliJ, PyCharm, etc.)
+.idea/
+*.iml
+*.iws
+
+# General editor backups
+*.swp
+*.swo
+*~
+*.bak

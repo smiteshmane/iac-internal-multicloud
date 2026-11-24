@@ -1,0 +1,91 @@
+# =====================================================================================================================
+# ENVIRONMENT CONFIGURATION TEMPLATE: Data-Migration-POC
+# NOTE: DO NOT STORE SENSITIVE PASSWORDS OR CREDENTIALS IN THIS FILE.
+# =====================================================================================================================
+
+# Core Identifiers
+subscription_id     = "" # Add your Azure subscription ID here or leave blank if set in CLI
+resource_group_name = "Data-Migration-POC"
+location            = "eastus2"
+environment         = "dev"
+project_name        = "Data-Migration-POC"
+
+# Tags (from reference rg-ai-dev-eus2-001)
+tag_requested_by = "Ganeswar.Pasalapudi@programmers.ai"
+tag_approved_by  = "smitesh.mane@programmers.ai"
+tag_created_by   = "Yogesh.pathe@programmers.ai"
+tag_managed_by   = "IT-solutions@programmers.ai"
+tag_review_date  = "12/31/2026"
+
+# Networking (Virtual Network)
+vnet_address_space = ["10.0.0.0/16"]
+
+# Subnets (managed with for_each)
+subnets = {
+  "sqlmi" = {
+    name               = "snet-sqlmi-dev-eus2-001"
+    address_prefixes   = ["10.0.1.0/26"]
+    delegation_service = "Microsoft.Sql/managedInstances"
+    delegation_actions = [
+      "Microsoft.Network/virtualNetworks/subnets/join/action",
+      "Microsoft.Network/virtualNetworks/subnets/prepareNetworkPolicies/action",
+      "Microsoft.Network/virtualNetworks/subnets/unprepareNetworkPolicies/action"
+    ]
+    nsg_key         = "sqlmi"
+    route_table_key = "sqlmi"
+  }
+  "source_vm" = {
+    name               = "snet-sourcesql-dev-eus2-001"
+    address_prefixes   = ["10.0.2.0/28"]
+    delegation_service = null
+    delegation_actions = null
+    nsg_key            = "source_vm"
+    route_table_key    = null
+  }
+}
+
+# Destination: Azure SQL Managed Instances (managed with for_each on same VNet and Subnet)
+managed_instances = {
+  "primary" = {
+    name                = ""
+    sku_name            = "GP_Gen5"
+    vcores              = 4
+    storage_size_in_gb  = 32
+    license_type        = "LicenseIncluded"
+    administrator_login = "sqladmin"
+    connection_type     = "Redirect"
+  }
+  "secondary" = {
+    name                = ""
+    sku_name            = "GP_Gen5"
+    vcores              = 4
+    storage_size_in_gb  = 32
+    license_type        = "LicenseIncluded"
+    administrator_login = "sqladmin"
+    connection_type     = "Redirect"
+  }
+}
+
+# Storage Accounts (managed with for_each)
+storage_accounts = {
+  "migration" = {
+    name_prefix              = "stgmigpoc"
+    account_tier             = "Standard"
+    account_replication_type = "LRS"
+    containers               = ["migration-backups"]
+  }
+}
+
+# Source Virtual Machines (managed with for_each)
+virtual_machines = {
+  "source_sql" = {
+    name            = "vm-sqlsource"
+    subnet_key      = "source_vm"
+    vm_size         = "Standard_B2s"
+    os_disk_size_gb = 32
+    admin_username  = "azureuser"
+    image_publisher = "MicrosoftSQLServer"
+    image_offer     = "sql2022-ws2022"
+    image_sku       = "sqldev-gen2"
+  }
+}

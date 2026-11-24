@@ -10,7 +10,7 @@ resource "azurerm_storage_account" "this" {
   account_kind             = var.account_kind
 
   min_tls_version                 = "TLS1_2"
-  enable_https_traffic_only       = true
+  https_traffic_only_enabled      = true
   public_network_access_enabled   = var.public_network_access_enabled
   allow_nested_items_to_be_public = var.allow_nested_items_to_be_public
 

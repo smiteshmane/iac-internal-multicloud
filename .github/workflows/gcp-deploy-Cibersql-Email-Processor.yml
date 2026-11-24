@@ -1,0 +1,74 @@
+name: "GCP Cibersql-Email-Processor Pipeline"
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+    paths:
+      - "environments-project/gcp/Cibersql-Email-Processor/**"
+      - "modules/gcp/**"
+      - ".github/workflows/gcp-deploy-Cibersql-Email-Processor.yml"
+      - ".github/workflows/reusable-terraform-*.yml"
+  pull_request:
+    branches:
+      - dev
+      - main
+    paths:
+      - "environments-project/gcp/Cibersql-Email-Processor/**"
+      - "modules/gcp/**"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target GCP Environment (e.g., dev, staging, prod)"
+        required: true
+        default: "dev"
+      project:
+        description: "GCP Project Directory Name under environments-project/gcp/"
+        required: true
+        default: "Cibersql-Email-Processor"
+      action:
+        description: "Terraform Execution Mode"
+        required: true
+        type: choice
+        options:
+          - "plan-and-apply"
+          - "plan-only"
+        default: "plan-and-apply"
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE20: "true"
+
+jobs:
+  plan:
+    name: "Plan Phase"
+    uses: ./.github/workflows/reusable-terraform-plan.yml
+    with:
+      working_directory: "environments-project/gcp/${{ github.event.inputs.project || 'Cibersql-Email-Processor' }}"
+      environment_name: "${{ github.event.inputs.environment || 'dev' }}"
+      terraform_version: "1.9.5"
+    secrets:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      GCP_TF_STATE_BUCKET: ${{ secrets.GCP_TF_STATE_BUCKET }}
+      GCP_TFVARS: ${{ secrets.GCP_TFVARS }}
+
+  apply:
+    name: "Apply Phase"
+    needs: plan
+    if: |
+      (github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')) ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.action != 'plan-only')
+    uses: ./.github/workflows/reusable-terraform-apply.yml
+    with:
+      working_directory: "environments-project/gcp/${{ github.event.inputs.project || 'Cibersql-Email-Processor' }}"
+      environment_name: "${{ github.event.inputs.environment || 'dev' }}"
+      terraform_version: "1.9.5"
+    secrets:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      GCP_TF_STATE_BUCKET: ${{ secrets.GCP_TF_STATE_BUCKET }}
+      GCP_TFVARS: ${{ secrets.GCP_TFVARS }}

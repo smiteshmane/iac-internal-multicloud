@@ -1,0 +1,179 @@
+name: "Reusable Terraform Plan Template"
+
+on:
+  workflow_call:
+    inputs:
+      working_directory:
+        required: true
+        type: string
+        description: "Path to the Terraform environment directory"
+      environment_name:
+        required: true
+        type: string
+        description: "Target environment name (dev, staging, prod)"
+      terraform_version:
+        required: false
+        type: string
+        default: "1.5.7"
+        description: "Terraform CLI version"
+    secrets:
+      GCP_SA_KEY:
+        required: false
+      GCP_TF_STATE_BUCKET:
+        required: false
+      GCP_TFVARS:
+        required: false
+
+jobs:
+  terraform-plan:
+    name: "Plan (${{ inputs.environment_name }})"
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+
+      # Check if GCP_SA_KEY secret is configured
+      - name: Check GCP Credentials
+        id: gcp-auth-check
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          if [ -n "$GCP_SA_KEY" ]; then
+            echo "has_creds=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_creds=false" >> $GITHUB_OUTPUT
+            echo "::warning::GCP_SA_KEY secret is not configured in GitHub Secrets. Skipping GCP Auth and Plan steps."
+          fi
+
+      # Initial validation mode when credentials are not configured
+      - name: Terraform Init (Validation Mode)
+        if: steps.gcp-auth-check.outputs.has_creds != 'true'
+        run: terraform init -backend=false
+
+      - name: Authenticate to Google Cloud
+        if: steps.gcp-auth-check.outputs.has_creds == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      # Initialize Terraform with GCS Remote Backend when authenticated
+      - name: Terraform Init (Remote GCS Backend)
+        if: steps.gcp-auth-check.outputs.has_creds == 'true'
+        env:
+          GCP_TF_STATE_BUCKET: ${{ secrets.GCP_TF_STATE_BUCKET }}
+        run: |
+          if [ -n "$GCP_TF_STATE_BUCKET" ]; then
+            terraform init -backend-config="bucket=$GCP_TF_STATE_BUCKET"
+          else
+            echo "::warning::GCP_TF_STATE_BUCKET secret is not set. Initializing with -backend=false."
+            terraform init -backend=false
+          fi
+
+      # Static Security Analysis Scan (tfsec)
+      - name: Security Scan (tfsec)
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: ${{ inputs.working_directory }}
+          soft_fail: true
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      # Inject terraform.tfvars from GitHub Secret if configured
+      - name: Inject terraform.tfvars from GitHub Secrets
+        if: steps.gcp-auth-check.outputs.has_creds == 'true'
+        env:
+          GCP_TFVARS: ${{ secrets.GCP_TFVARS }}
+        run: |
+          if [ -n "$GCP_TFVARS" ]; then
+            echo "$GCP_TFVARS" > terraform.tfvars
+          fi
+
+      - name: Terraform Plan
+        if: steps.gcp-auth-check.outputs.has_creds == 'true'
+        run: |
+          terraform plan -no-color -input=false -out=tfplan > plan.txt 2>&1 || true
+          cat plan.txt
+
+      - name: Save Plan Artifact
+        if: steps.gcp-auth-check.outputs.has_creds == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ inputs.environment_name }}
+          path: ${{ inputs.working_directory }}/tfplan
+
+      # Post or update Terraform Plan report comment on Pull Request
+      - name: Post Terraform Plan to PR
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request' && steps.gcp-auth-check.outputs.has_creds == 'true'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const planFilePath = '${{ inputs.working_directory }}/plan.txt';
+            let planText = 'No plan output generated.';
+            if (fs.existsSync(planFilePath)) {
+              planText = fs.readFileSync(planFilePath, 'utf8');
+            }
+
+            if (planText.length > 60000) {
+              planText = planText.substring(0, 60000) + '\n... [Plan output truncated due to size limit]';
+            }
+
+            const header = `### 📋 Terraform Plan Report (${{ inputs.environment_name }})`;
+            const body = `${header}
+
+            **Target Environment:** \`${{ inputs.environment_name }}\`
+            **Working Directory:** \`${{ inputs.working_directory }}\`
+            **Pushed By:** @${context.actor}
+
+            <details><summary><b>Click to expand Terraform Plan Output</b></summary>
+
+            \`\`\`hcl
+            ${planText}
+            \`\`\`
+
+            </details>`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment => {
+              return comment.user.type === 'Bot' && comment.body.includes(header);
+            });
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }
